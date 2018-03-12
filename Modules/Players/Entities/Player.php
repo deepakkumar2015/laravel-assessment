@@ -3,10 +3,12 @@
 namespace Modules\Players\Entities;
 
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Eloquent\Model;
 
 class Player extends Model
 {
     const TABLE = 'players';
+    const TABLE_TEAMS = 'teams';
 
     /**
      * @var \Illuminate\Database\Connection
@@ -25,8 +27,16 @@ class Player extends Model
     /**
      * @return array|static[]
      */
-    public function getAllPlayers()
+    public function getAllPlayers($teamId = null)
     {
+        if ($teamId) {
+            return $this
+                ->database
+                ->table(self::TABLE)
+                ->where('team_id', $teamId)
+                ->get();
+        }
+
         return $this
             ->database
             ->table(self::TABLE)
