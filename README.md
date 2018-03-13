@@ -3,7 +3,7 @@ Submitted a demo Laravel application for assessment test
 
 # Getting Started:
 
->> First unzip the folder
+>> First clone the repository to your local mechine
 
 >> Setup database with the db schema added 
 here "laravel-assessment/database/database_schema/laraveldb.sql"
@@ -22,12 +22,14 @@ here "laravel-assessment/database/database_schema/laraveldb.sql"
 
 >> php composer.phar install
 
+>> Change .env.example to .env
+
 >> Browse site: http://laravel-assessment.localhost:8080
 
 Pages:
 1. Login:
 http://laravel-assessment.localhost:8080/login
-Username: deepak
+Username: deepakkumar.bastia@gmail.com
 Password: 123456
 
 2. Register:
