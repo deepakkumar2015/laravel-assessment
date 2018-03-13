@@ -2,10 +2,11 @@
 
 namespace Modules\Teams\Http\Controllers;
 
+use Validator;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use Illuminate\Routing\Controller;
 use Modules\Teams\Entities\Team;
+use Illuminate\Routing\Controller;
+use Illuminate\Contracts\Routing\ResponseFactory;
 
 class TeamsController extends Controller
 {
@@ -34,13 +35,32 @@ class TeamsController extends Controller
     }
 
     /**
+     * Show the form for creating a new resource.
+     * @return Response
+     */
+    public function get(Request $request)
+    {
+        $allTeams = $this->team->getAllTeams();
+
+        return view('teams::team', compact('allTeams'))
+            ->with('i', ($request->input('page', 1) - 1) * 10);
+    }
+
+    /**
+     * Get Teams List API
+     * @param $teamId
      * @return mixed
      */
-    public function getTeams()
+    public function getTeams($teamId = null)
     {
         $data = [
             'status' => 'success'
         ];
+
+        if ($teamId) {
+            return $this->response->json($this->team->getAllTeams($teamId));
+        }
+
         $data['data'] = $this->team->getAllTeams();
 
         return $this->response->json($data);
@@ -56,46 +76,73 @@ class TeamsController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
-     * @param  Request $request
-     * @return Response
-     */
-    public function store(Request $request)
-    {
-    }
-
-    /**
-     * Show the specified resource.
-     * @return Response
-     */
-    public function show()
-    {
-        return view('teams::show');
-    }
-
-    /**
      * Show the form for editing the specified resource.
      * @return Response
      */
-    public function edit()
+    public function edit($teamId)
     {
-        return view('teams::edit');
+        $oneTeam = $this->team->getTeamById($teamId);
+
+        return view('teams::update', compact('oneTeam'));
     }
 
     /**
-     * Update the specified resource in storage.
-     * @param  Request $request
-     * @return Response
+     * @param Request $request
+     * @param $teamId
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function update(Request $request)
+    public function update(Request $request, $teamId)
     {
+        $validator = Validator::make($request->all(), [
+            'identifier' => 'required',
+            'name' => 'required',
+            'logoUri' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect('teams/edit')
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $inputData = $request->only(['identifier', 'name', 'logoUri']);
+        $this->team->save($inputData, $teamId);
+        return redirect()
+            ->route('teams.edit',[$teamId])
+            ->with('success','Team Updated successfully');
     }
 
     /**
-     * Remove the specified resource from storage.
-     * @return Response
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function destroy()
+    public function save(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            'identifier' => 'required',
+            'name' => 'required',
+            'logoUri' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect('teams/create')
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $inputData = $request->only(['identifier', 'name', 'logoUri']);
+        $this->team->save($inputData);
+
+        return redirect()
+            ->route('teams.get')
+            ->with('success','Team created successfully');
     }
+
+    /*public function delete($teamId)
+    {
+        $this->team->delete($teamId);
+
+        return redirect()->route('teams.get')
+                         ->with('success','Team deleted successfully');
+    }*/
 }

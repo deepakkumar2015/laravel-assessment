@@ -2,10 +2,12 @@
 
 namespace Modules\Players\Http\Controllers;
 
+use Validator;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Modules\Players\Entities\Player;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use Modules\Teams\Entities\Team;
 
 class PlayersController extends Controller
 {
@@ -22,15 +24,37 @@ class PlayersController extends Controller
      */
     private $response;
 
+    private $team;
+
     /**
      * PlayersController constructor.
      * @param Player $player
      * @param $response
      */
-    public function __construct(Player $player, ResponseFactory $response)
+    public function __construct(Player $player, ResponseFactory $response, Team $team)
     {
         $this->player = $player;
         $this->response = $response;
+        $this->team = $team;
+    }
+
+    /**
+     * @param Request $request
+     * @param null $teamId
+     * @return $this
+     */
+    public function get(Request $request, $teamId = null)
+    {
+        $allPlayers = $this->player->getAllPlayers();
+        $teamName = '';
+
+        if (! empty($teamId)) {
+            $allPlayers = $this->player->getAllPlayers($teamId);
+            $teamName   = $this->team->getTeamNameById($teamId)[0];
+        }
+
+        return view('players::player', compact('allPlayers', 'teamName'))
+            ->with('i', ($request->input('page', 1) - 1) * 10);
     }
 
     /**
@@ -38,64 +62,101 @@ class PlayersController extends Controller
      */
     public function getPlayers()
     {
-        $data = [
-            'status' => 'success'
-        ];
+        $data = ['status' => 'success'];
         $data['data'] = $this->player->getAllPlayers();
 
         return $this->response->json($data);
     }
 
+
     /**
-     * Show the form for creating a new resource.
-     * @return Response
+     * Create Player view action
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
     public function create()
     {
-        return view('players::create');
+        $allTeams = $this->team->getTeamNamesList();
+
+        return view('players::create', compact('allTeams'));
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store a new player.
      * @param  Request $request
      * @return Response
      */
-    public function store(Request $request)
+    public function save(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            'team' => 'required',
+            'identifier' => 'required',
+            'first_name' => 'required',
+            'last_name' => 'required',
+            'image_uri' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect('players/create')
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $inputData = $request->only(['team', 'identifier', 'first_name', 'last_name', 'image_uri']);
+        $this->player->save($inputData);
+
+        return redirect()
+            ->route('players.get')
+            ->with('success','Player created successfully');
     }
 
     /**
-     * Show the specified resource.
-     * @return Response
+     * Edit player view page action
+     * @param $playerId
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
-    public function show()
+    public function edit($playerId)
     {
-        return view('players::show');
+        $allTeams = $this->team->getTeamNamesList();
+        $onePlayer = $this->player->getPlayerById($playerId);
+
+        return view('players::update', compact('onePlayer', 'allTeams'));
     }
 
     /**
-     * Show the form for editing the specified resource.
-     * @return Response
+     * Update Players
+     * @param Request $request
+     * @param $playerId
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function edit()
+    public function update(Request $request, $playerId)
     {
-        return view('players::edit');
+        $validator = Validator::make($request->all(), [
+            'team' => 'required',
+            'identifier' => 'required',
+            'first_name' => 'required',
+            'last_name' => 'required',
+            'image_uri' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect('players/edit')
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $inputData = $request->only(['team', 'identifier', 'first_name', 'last_name', 'image_uri']);
+        $this->player->save($inputData, $playerId);
+
+        return redirect()
+            ->route('players.edit',[$playerId])
+            ->with('success','Player Updated successfully');
     }
 
-    /**
-     * Update the specified resource in storage.
-     * @param  Request $request
-     * @return Response
-     */
-    public function update(Request $request)
+    /*public function delete($playerId)
     {
-    }
+        $this->team->delete($playerId);
 
-    /**
-     * Remove the specified resource from storage.
-     * @return Response
-     */
-    public function destroy()
-    {
-    }
+        return redirect()->route('players.get')
+                         ->with('success','Team deleted successfully');
+    }*/
 }
